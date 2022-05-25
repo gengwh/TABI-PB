@@ -1,0 +1,9 @@
+fname 2x8z 
+den 1 
+epsp 1 
+epsw 80
+bulk_strength 0.0
+order 3
+maxparnode 100
+mac 0.8
+iprcd 1 
