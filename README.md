@@ -5,7 +5,7 @@ This software package employs a well-conditioned boundary integral formulation f
 
 The updates included from our original repo on sourceforge (https://sourceforge.net/p/tabipb/code/ci/master/tree/) are:
 
-- Three molecular surface generators can be used by modify the parameter isf in usrdata.in file
+- Three molecular surface generators can be used by modifying the parameter isf in usrdata.in file
  
 -- isf=1 MSMS susrface (https://ccsb.scripps.edu/msms/downloads/) 
 
