@@ -8,7 +8,6 @@
 ! 7. Extension from spherical cavity to real molecules
 ! 8. Preconditioning: Diagnal Scaling & Block Diagnal
 
-
 program TABIPB
 use molecule
 use comdata
@@ -46,7 +45,8 @@ READ(101,*,IOSTAT = MEOF) fhead, bulk_strength
 READ(101,*,IOSTAT = MEOF) fhead, order
 READ(101,*,IOSTAT = MEOF) fhead, maxparnode
 READ(101,*,IOSTAT = MEOF) fhead, theta
-READ(101,*,IOSTAT = MEOF) fhead, iprcd 
+READ(101,*,IOSTAT = MEOF) fhead, iprcd
+READ(101,*,IOSTAT = MEOF) fhead, isurf_type     !--yang
 close(101)
 !print *,fname,den,eps0,eps1,bulk_strength,order,maxparnode,theta
 !???????????????????????????????????????????????????????????????
@@ -120,6 +120,16 @@ if (iprcd == 1) then
   print *, "use block diagonal preconditioning ..."
 else
   MSOLVE => MSOLVEprec;
+endif
+
+!--yang
+
+if (isurf_type == 4) then   
+  print *, "use ESES ..."
+else if (isurf_type == 2) then
+  print *, "use NanoShaper ..."
+else if (isurf_type == 1) then
+  print *, "use msms ..."
 endif
 
 print *,'Begin to call the solver...'
