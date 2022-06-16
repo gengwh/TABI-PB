@@ -604,13 +604,6 @@ do i=1,nface    ! for phi on each element
     enddo
 enddo
 
-
-open(103,file='1a63.pqr')
-Do i=1,nface 
-  write(103,'(5f16.10)',IOSTAT = MEOF) real(tr_xyz(:,i)),real(tr_q(1:2,i))
-END DO         
-CLOSE(103)
-
 end subroutine
 
 !---------------------------------------------------------------------------------------------------------------
