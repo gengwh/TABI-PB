@@ -7,11 +7,11 @@ The updates included from our original repo on sourceforge (https://sourceforge.
 
 - Three molecular surface generators can be used by modify the parameter isf in usrdata.in file
  
-isf=1 MSMS susrface (https://ccsb.scripps.edu/msms/downloads/) 
+ isf=1 MSMS susrface (https://ccsb.scripps.edu/msms/downloads/) 
 
-isf=2 NanoShaper surface (https://gitlab.iit.it/SDecherchi/nanoshaper)
+ isf=2 NanoShaper surface (https://gitlab.iit.it/SDecherchi/nanoshaper)
 
-isf=4 ESES surface (https://github.com/WeilabMSU/ESES)
+ isf=4 ESES surface (https://github.com/WeilabMSU/ESES)
 
 - A diagonal-block conditioner (see the reference below) is used to speed-up and stablize ill-conditioning caused by triangulation quality.
 
