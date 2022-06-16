@@ -11,6 +11,7 @@ CHARACTER(100) :: FHEAD
 character(10) :: c1,c2,c3,c4,c5
 integer i,iflag,nremark,MEOF,n_obtuse
 real*4 xyzqr(5)
+real*4 den_NS,den_ESES  !--yang
 
 
 !Obtain path
@@ -84,54 +85,168 @@ real*4 xyzqr(5)
 
     close(102)
 
-    !print *,'msms -if '//pathname(1:lenpath)//fname(1:lenfname)//".xyzr"//' -prob 1.4 -de ' &
-    !//den(1:5)//' -of '//fname(1:lenfname) --WG
-    rslt=system('msms -if '//pathname(1:lenpath)//fname(1:lenfname)//".xyzr"//' -prob 1.4 -de ' &
-    //den(1:5)//' -of '//pathname(1:lenpath)//fname(1:lenfname))
-      ! read the surface points
-    OPEN(102,FILE=pathname(1:lenpath)//FNAME(1:lenfname)//".vert")
+!--yang
 
-    READ(102,*) FHEAD
-    READ(102,*) FHEAD
-    READ(102,*) NSPT, ppp, qqq, rrr
+    IF (isurf_type == 4) THEN
+        write(*,*)'MS_Intersection '//pathname(1:lenpath)//fname(1:lenfname)//'.pqr 1.4 '//den(1:5)//' 1.0'
+        rslt=system('MS_Intersection '//pathname(1:lenpath)//fname(1:lenfname)//".pqr"//' 1.4 ' &
+        //den(1:5)//' 1.0')
 
-    ALLOCATE(SPTPOS(3,NSPT), SPTNRM(3,NSPT), NATMAFF(NSPT), NSFTYPE(NSPT), STAT= ierr)
-    IF (ierr .NE. 0) THEN
-        WRITE(6,*) 'Error allocating SPTPOS, SPTNRM, NATMAFF, NSFTYPE!'
-    STOP
+        open(102,FILE="marching_cubes.obj")
+        READ(102,*) NSPT
+    
+        ALLOCATE(SPTPOS(3,NSPT), SPTNRM(3,NSPT), NATMAFF(NSPT), NSFTYPE(NSPT), STAT= ierr)
+        IF (ierr .NE. 0) THEN
+            WRITE(6,*) 'Error allocating SPTPOS, SPTNRM, NATMAFF, NSFTYPE!'
+        STOP
+        END IF
+    
+        SPTPOS=0.D0; SPTNRM=0.D0; NATMAFF=0; NSFTYPE=0;
+        do i=1,NSPT
+            read(102,*) FHEAD, POS(1:3), VECTOR(1:3)
+            SPTPOS(:,I) = POS;   SPTNRM(:,I) = VECTOR
+
+        enddo
+
+        READ(102,*) NFACE
+        ALLOCATE(NVERT(3,NFACE), MFACE(NFACE), STAT=ierr)
+        IF (ierr .NE. 0) THEN
+            WRITE(6,*) 'Error allocating NVERT, MFACE'
+        STOP
+        END IF
+    
+        NVERT=0; MFACE=0
+    
+        do i=1,NFACE
+            read(102,*) FHEAD, NIND(1:3)
+            NVERT(1:3,I) = NIND(1:3)
+        enddo    
+    
+        close(102)
+        print *,'NSPT IS ',NSPT
+        print *,'NFACE IS ',NFACE 
+
+
+    ELSE IF (isurf_type == 2) THEN
+        !copy and rename file for NanoShape
+        rslt=system("cp ./"//pathname(1:lenpath)//fname(1:lenfname)//'.xyzr '//'molecule.xyzr')
+        
+        ! rewrite .prm file based on density from usrdata.in for ESES
+        read(den(1:5),'(f10.0)')  den_ESES
+        den_NS = 0.9792*den_ESES**(-1.01) + 0.03161
+
+        open(101,file="surfaceConfiguration.prm")!,status='replace')
+        open(102,file="Nano.prm")
+        do I =1,21
+            read (101,'(A)',end=99) fhead ! read line from input file
+            if (fhead(1:10)=='Grid_scale') then
+                write(102,*) 'Grid_scale = ',den_NS
+            else
+                write(102, '(A)') trim(fhead)   ! write line to output file
+            endif
+            IF(MEOF .LT. 0) EXIT
+        enddo
+        99 CONTINUE
+        close(101)
+        close(102)
+
+        print *,'den_NS IS ',den_NS
+        rslt=system('NanoShaper Nano.prm')
+        !rslt=system('NanoShaper surfaceConfiguration.prm')
+
+        ! read the surface points YANG
+        NSPT=0; NFACE=0
+        OPEN(102,FILE="triangulatedSurf.vert")
+        READ(102,*) FHEAD
+        READ(102,*) FHEAD
+        READ(102,*) NSPT
+        ! read the surface triangulization
+        OPEN(103,FILE="triangulatedSurf.face")
+        
+        READ(103,*) FHEAD
+        READ(103,*) FHEAD
+        READ(103,*) NFACE
+        ALLOCATE(SPTPOS(3,NSPT), SPTNRM(3,NSPT), NATMAFF(NSPT), NSFTYPE(NSPT), STAT= ierr)
+        IF (ierr .NE. 0) THEN
+            WRITE(6,*) 'Error allocating SPTPOS, SPTNRM, NATMAFF, NSFTYPE!'
+        STOP
+        END IF
+        SPTPOS=0.D0; SPTNRM=0.D0; NATMAFF=0; NSFTYPE=0;
+        DO I=1,NSPT
+            READ(102,*) POS(1:3), VECTOR(1:3), KK, NAFF, NAFFT
+            SPTPOS(:,I) = POS;   SPTNRM(:,I) = VECTOR
+            NATMAFF(I)  = NAFF;  NSFTYPE(I)  = NAFFT
+        END DO
+        close(102)
+    
+        !! read the surface triangulization   
+        ALLOCATE(NVERT(3,NFACE), MFACE(NFACE), STAT=ierr)
+        IF (ierr .NE. 0) THEN
+            WRITE(6,*) 'Error allocating NVERT, MFACE'
+        STOP
+        END IF
+        
+        NVERT=0; MFACE=0
+            
+        DO I=1,NFACE
+            READ(103,*) NIND(1:5)
+            NVERT(1:3,I) = NIND(1:3);  MFACE(I) = NIND(4)
+        END DO
+        CLOSE(103)
+        print *,'NSPT IS ',NSPT
+        print *,'NFACE IS ',NFACE
+
+
+    ELSE IF (isurf_type == 1) THEN
+        rslt=system('msms -if '//pathname(1:lenpath)//fname(1:lenfname)//".xyzr"//' -prob 1.4 -de ' &
+        //den(1:5)//' -of '//pathname(1:lenpath)//fname(1:lenfname))
+          ! read the surface points
+        OPEN(102,FILE=pathname(1:lenpath)//FNAME(1:lenfname)//".vert")
+
+        READ(102,*) FHEAD
+        READ(102,*) FHEAD
+        READ(102,*) NSPT, ppp, qqq, rrr
+
+        ALLOCATE(SPTPOS(3,NSPT), SPTNRM(3,NSPT), NATMAFF(NSPT), NSFTYPE(NSPT), STAT= ierr)
+        IF (ierr .NE. 0) THEN
+            WRITE(6,*) 'Error allocating SPTPOS, SPTNRM, NATMAFF, NSFTYPE!'
+        STOP
+        END IF
+
+        SPTPOS=0.D0; SPTNRM=0.D0; NATMAFF=0; NSFTYPE=0;
+
+        DO I=1,NSPT
+            READ(102,*) POS(1:3), VECTOR(1:3) !, KK, NAFF, NAFFT -- WG
+
+            SPTPOS(:,I) = POS;   SPTNRM(:,I) = VECTOR
+            !NATMAFF(I)  = NAFF;  NSFTYPE(I)  = NAFFT -- WG
+        END DO
+        CLOSE(102)
+
+    ! read the surface triangulization
+
+        OPEN(103,FILE=pathname(1:lenpath)//FNAME(1:lenfname)//".face")
+
+        READ(103,*) FHEAD
+        READ(103,*) FHEAD
+        READ(103,*) NFACE, PPP, QQQ, RRR
+
+        ALLOCATE(NVERT(3,NFACE), MFACE(NFACE), STAT=ierr)
+        IF (ierr .NE. 0) THEN
+            WRITE(6,*) 'Error allocating NVERT, MFACE'
+        STOP
+        END IF
+
+        NVERT=0; MFACE=0
+    
+        DO I=1,NFACE
+            READ(103,*) NIND(1:3) !--WG
+            NVERT(1:3,I) = NIND(1:3);  !MFACE(I) = NIND(4) --WG
+        END DO
+        CLOSE(103)
     END IF
 
-    SPTPOS=0.D0; SPTNRM=0.D0; NATMAFF=0; NSFTYPE=0;
 
-    DO I=1,NSPT
-        READ(102,*) POS(1:3), VECTOR(1:3) !, KK, NAFF, NAFFT -- WG
-
-        SPTPOS(:,I) = POS;   SPTNRM(:,I) = VECTOR
-        !NATMAFF(I)  = NAFF;  NSFTYPE(I)  = NAFFT -- WG
-    END DO
-    CLOSE(102)
-
-! read the surface triangulization
-
-    OPEN(103,FILE=pathname(1:lenpath)//FNAME(1:lenfname)//".face")
-
-    READ(103,*) FHEAD
-    READ(103,*) FHEAD
-    READ(103,*) NFACE, PPP, QQQ, RRR
-
-    ALLOCATE(NVERT(3,NFACE), MFACE(NFACE), STAT=ierr)
-    IF (ierr .NE. 0) THEN
-        WRITE(6,*) 'Error allocating NVERT, MFACE'
-    STOP
-    END IF
-
-    NVERT=0; MFACE=0
-
-    DO I=1,NFACE
-        READ(103,*) NIND(1:3) !--WG
-        NVERT(1:3,I) = NIND(1:3);  !MFACE(I) = NIND(4) --WG
-    END DO
-    CLOSE(103)
     call surface_area(s_area) ! the post-MSMS code
     print *,'surface area=', real(s_area)
     call count_obtuse(n_obtuse)
@@ -139,10 +254,6 @@ real*4 xyzqr(5)
     rslt=system('rm '//pathname(1:lenpath)//fname(1:lenfname)//".xyzr")
     rslt=system('rm '//pathname(1:lenpath)//fname(1:lenfname)//".vert")
     rslt=system('rm '//pathname(1:lenpath)//fname(1:lenfname)//".face")
-
-    !rslt=system('del '//pathname(1:lenpath)//fname(1:lenfname)//".xyzr")
-    !rslt=system('del '//pathname(1:lenpath)//fname(1:lenfname)//".vert")
-    !rslt=system('del '//pathname(1:lenpath)//fname(1:lenfname)//".face")
 
 End
 !------------------------------------------------------------------------
