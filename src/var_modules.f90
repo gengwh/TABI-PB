@@ -18,7 +18,7 @@ MODULE COMDATA
 
    character(100) :: fname,pathname,den
 
-   integer :: lenpath,lenfname
+   integer :: lenpath,lenfname, isurf_type
 
    real*8, dimension(:), allocatable :: bvct,xvct,F_exa, xtemp
    real*8, dimension(:,:), allocatable :: amtrx
@@ -45,7 +45,7 @@ MODULE COMDATAprec
 
    character(100) :: fname,pathname,den
 
-   integer :: lenpath,lenfname,iprcd
+   integer :: lenpath,lenfname,iprcd, isurf_type    !--yang
 
    real*8, dimension(:), allocatable :: bvct,xvct,F_exa, xtemp
    real*8, dimension(:,:), allocatable :: amtrx
