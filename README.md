@@ -6,8 +6,11 @@ This software package employs a well-conditioned boundary integral formulation f
 The updates included from our original repo on sourceforge (https://sourceforge.net/p/tabipb/code/ci/master/tree/) are:
 
 - Three molecular surface generators can be used by modify the parameter isf in usrdata.in file
+ 
 isf=1 MSMS susrface (https://ccsb.scripps.edu/msms/downloads/) 
+
 isf=2 NanoShaper surface (https://gitlab.iit.it/SDecherchi/nanoshaper)
+
 isf=4 ESES surface (https://github.com/WeilabMSU/ESES)
 
 - A diagonal-block conditioner (see the reference below) is used to speed-up and stablize ill-conditioning caused by triangulation quality.
