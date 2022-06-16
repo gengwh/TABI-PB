@@ -1,5 +1,5 @@
 fname 4mn3 
-den 1 
+den 0.25 
 epsp 1 
 epsw 80
 bulk_strength 0.0
@@ -7,3 +7,4 @@ order 3
 maxparnode 100
 mac 0.8
 iprcd 1 
+isurf_type 2 
