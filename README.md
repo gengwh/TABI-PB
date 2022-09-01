@@ -20,3 +20,6 @@ REFERENCE:
 W. Geng and R. Krasny, A treecode-accelerated boundary integral Poisson-Boltzmann solver for continuum electrostatics of solvated biomolecules, J. Comput. Phys., 247, 62-87 (2013).
 
 J. Chen and W. Geng, On preconditioning the treecode-accelerated boundary integral (TABI) Poisson-Boltzmann solver, J. Comput. Phys., 373, 750-762 (2018).
+
+The C++ version of TABI is mained by Dr. Leighton Wilson on Github (https://github.com/Treecodes/TABI-PB)
+
