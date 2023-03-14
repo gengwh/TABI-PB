@@ -50,7 +50,7 @@ real*4 den_NS,den_ESES  !--yang
     do
         read(102,*,IOSTAT = MEOF) c1,c2,c3,c4,c5,xyzqr
 
-        if ((c1(1:3) .ne. 'END') .and. (MEOF .eq. 0)) then
+        if ((c1(1:3) .ne. 'END') .and. (MEOF .eq. 0) .and. (c1(1:3) .ne. 'TER')) then
             write(103,*) xyzqr(1:3),xyzqr(5)
             natm=natm+1
         endif
