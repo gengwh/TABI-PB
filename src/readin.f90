@@ -50,7 +50,7 @@ real*4 den_NS,den_ESES  !--yang
     do
         read(102,*,IOSTAT = MEOF) c1,c2,c3,c4,c5,xyzqr
 
-        if ((c1(1:3) .ne. 'END') .and. (MEOF .eq. 0)) then
+        if ((c1(1:3) .ne. 'END') .and. (MEOF .eq. 0) .and. (c1(1:3) .ne. 'TER')) then
             write(103,*) xyzqr(1:3),xyzqr(5)
             natm=natm+1
         endif
@@ -341,8 +341,8 @@ end
 
 !---------------------------------------------------------------------------------
 ! For a new vertex, compared with all the stored vertex
-! ifind .ne. 0:	if the vertex is already stored
-! ifind=0:		if the vertex is completely new
+! ifind .ne. 0: if the vertex is already stored
+! ifind=0:      if the vertex is completely new
 Subroutine mesh_find_vertex(indx_sptpos,ifind,sptpos,nspt,sptpos_new)
 implicit none
 real*8 sptpos(3,nspt),sptpos_new(3),diff(3)

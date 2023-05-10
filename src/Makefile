@@ -5,8 +5,8 @@ LIBS = -llapack -lblas -lm
 
 F90 = gfortran
 flag= -O2 -c
-tabipb.exe: var_modules.o treecode3d_pb.o main.o readin.o dgmres_dep.o
-	$(F90)  -o tabipb.exe *.o $(LIBS)
+tabipb.exe: var_modules.o treecode3d_pb.o main.o readin.o dgmres_dep.o dgetrf_dep.o
+	$(F90)  -o tabipb.exe *.o 
 var_modules.o:	var_modules.f90
 	$(F90) $(flag) var_modules.f90
 main.o:		main.f90
@@ -17,6 +17,8 @@ treecode3d_pb.o:	treecode3d_pb.f
 	$(F90) $(flag) treecode3d_pb.f
 dgmres_dep.o:	dgmres_dep.f
 	$(F90) $(flag) dgmres_dep.f
+dgetrf_dep.o:	dgetrf_dep.f
+	$(F90) $(flag) dgetrf_dep.f	
 molecule.mod:   var_modules.f90
 	$(F90) $(flag) var_modules.f90
 comdata.mod:   var_modules.f90

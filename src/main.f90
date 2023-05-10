@@ -536,6 +536,7 @@ scale1=0.5d0*(1.d0+eps)
 scale2=0.5d0*(1.d0+1.d0/eps)
 Z(1:N/2)=R(1:N/2)/scale1
 Z((N/2+1):N)=R((N/2+1):N)/scale2
+
 end subroutine
 
 !-----------------------------------
