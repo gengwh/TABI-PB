@@ -436,7 +436,9 @@ WRITE(6,*) ' '
 WRITE(6,*) 'Creating tree for ',numpars,' particles with max ', maxparnode, ' per node...'
 
 CALL CPU_TIME(timebeg)
+nleaf=0
 CALL CREATE_TREE(troot,1,numpars,x,y,z,q,maxparnode,xyzminmax,level,numpars)
+print *,'number of leaves of the tree:',nleaf
 !stop
 temp_a=tr_area
 temp_b=bvct
@@ -521,7 +523,7 @@ integer N
 real*8 R(N),Z(N)
 
 !call cpu_time(cpu1)
-call leafmatvec(troot, N, R, Z, kappa, eps);
+call LEAFMATVECpara(troot, N, R, Z, kappa, eps);
 !call cpu_time(cpu2)
 !print *,'precond',cpu2-cpu1
 end subroutine

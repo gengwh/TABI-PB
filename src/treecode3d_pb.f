@@ -14,7 +14,7 @@ C global variables for taylor expansions
 
 C global variables to track tree levels
 
-      INTEGER :: minlevel,maxlevel
+      INTEGER :: minlevel,maxlevel,nleaf
 
 C global variables used when computing potential/force
 
@@ -272,6 +272,7 @@ C
             END IF
          END DO
       ELSE
+         nleaf=nleaf+1
          IF (level .LT. minlevel) THEN
             minlevel=level
          END IF
@@ -1222,7 +1223,7 @@ CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
         INTEGER :: Nt2, N, idx, ibeg, iend, i, j, nrow, nrow2
         INTEGER :: matidx1, matidx2, matidx3, matidx4
-        INTEGER :: inc, ierr
+        INTEGER :: inc, ierr,ict
         INTEGER, DIMENSION(:), ALLOCATABLE :: ipiv
         TYPE(tnode),POINTER :: p
         REAL(KIND=r8),DIMENSION(Nt2) :: rhs, sol
@@ -1248,9 +1249,7 @@ C       the size of input Nt2 is twice of N's
         idx = 1;
         ibeg = 0;
         iend = 0;
-
         DO WHILE ( idx .LE. N )
-
           CALL LEAFLENGTH(p, idx, ibeg, iend, nrow)
           nrow2 = 2*nrow
           ALLOCATE(matrixA(nrow2*nrow2),r2s(nrow2),STAT=ierr)
@@ -1339,6 +1338,7 @@ C       the size of input Nt2 is twice of N's
             ENDDO
           ENDDO
 
+
 C!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 C          Anorm1 = 0.D0; AnormInf = 0.D0
 C          tmp_norm1 = 0.D0; tmp_normInf = 0.D0
@@ -1388,6 +1388,159 @@ C          print *,N,iend
 C        stop
 
       END SUBROUTINE LEAFMATVEC
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+C     This code modified by Geng for paralelization of preconditioner 
+      SUBROUTINE LEAFMATVECpara(p, Nt2, rhs, sol, kappa, eps)
+        USE treecode
+        IMPLICIT NONE
+
+        INTEGER :: Nt2, N, idx, ibeg, iend, i, j, nrow, nrow2
+        INTEGER :: matidx1, matidx2, matidx3, matidx4
+        INTEGER :: inc, ierr,ileaf
+        INTEGER, DIMENSION(:), ALLOCATABLE :: ipiv
+        TYPE(tnode),POINTER :: p
+        REAL(KIND=r8),DIMENSION(Nt2) :: rhs, sol
+        REAL*8 :: kappa, eps
+        REAL*8 :: pre1, pre2, tarxyz(3), tarcha(3),tempx, temp_area
+        REAL*8, DIMENSION(:), ALLOCATABLE :: matrixA,r2s
+        INTEGER, DIMENSION(:), ALLOCATABLE :: ibegs, nrows
+        real*8 :: r(3),v(3),pi,rs,cos_theta,cos_theta0,kappa_rs
+        real*8 :: G0,Gk,G10,G20,G1,G2,G3,G4,one_over_4pi,exp_kappa_rs
+          real*8 :: tp1,tp2,tp3,b(2)
+C!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        real*8 :: Anorm1, AnormInf, tmp_norm1, tmp_normInf
+        real*8 :: RCOND1, RCONDInf
+        real(KIND=r8),DIMENSION(:),ALLOCATABLE :: WORK
+        INTEGER, DIMENSION(:), ALLOCATABLE :: iWORK
+C!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        common // pi,one_over_4pi
+
+C       the size of input Nt2 is twice of N's
+        N = Nt2/2;
+        pre1=0.5d0*(1.d0+eps)
+        pre2=0.5d0*(1.d0+1.d0/eps)
+
+        idx = 1;
+        ibeg = 0;
+        iend = 0;
+
+        ALLOCATE(ibegs(nleaf),nrows(nleaf),STAT=ierr)
+        ibegs=0; nrows=0;
+        ileaf=0
+
+        DO WHILE ( idx .LE. N )
+          CALL LEAFLENGTH(p, idx, ibeg, iend, nrow)
+          ileaf=ileaf+1
+          ibegs(ileaf)=ibeg
+          nrows(ileaf)=nrow
+          idx = iend + 1
+          print *,ileaf,ibeg,iend
+        ENDDO
+
+        DO ileaf=1,nleaf
+          ibeg=ibegs(ileaf)  
+          nrow=nrows(ileaf)
+          iend=ibeg+nrow-1  
+          nrow2 = 2*nrow
+          ALLOCATE(matrixA(nrow2*nrow2),r2s(nrow2),STAT=ierr)
+          ALLOCATE(ipiv(nrow2),STAT=ierr)
+          matrixA = 0.D0
+          r2s(1:nrow)=rhs(ibeg:iend)
+          r2s((nrow+1):nrow2)=rhs((ibeg+N):(iend+N))
+
+          DO i=ibeg,iend
+            tarxyz(1) = x(i)
+            tarxyz(2) = y(i)
+            tarxyz(3) = z(i)
+            tarcha = tr_q(:,i)
+
+            DO j=ibeg,i-1
+              r=(/x(j),y(j),z(j)/)
+              v=tr_q(:,j)
+
+              rs=sqrt(dot_product(r-tarxyz,r-tarxyz))
+              G0=one_over_4pi/rs
+              kappa_rs=kappa*rs
+              exp_kappa_rs=exp(-kappa_rs)
+              Gk=exp_kappa_rs*G0
+
+              cos_theta=dot_product(v,r-tarxyz)/rs
+              cos_theta0=dot_product(tarcha,r-tarxyz)/rs
+
+              tp1=G0/rs
+              tp2=(1.d0+kappa_rs)*exp_kappa_rs
+
+              G10=cos_theta0*tp1
+              G20=tp2*G10
+
+              G1=cos_theta*tp1
+              G2=tp2*G1
+              G3=(dot_product(tarcha,v)-3.d0*cos_theta0*cos_theta)
+     &            /rs*tp1
+              G4=tp2*G3-kappa**2*cos_theta0*cos_theta*Gk
+
+              matidx1=(j-ibeg)*nrow2+i-ibeg+1
+              matidx2=(j-ibeg)*nrow2+i-ibeg+nrow+1
+              matidx3=(j-ibeg+nrow)*nrow2+i-ibeg+1
+              matidx4=(j-ibeg+nrow)*nrow2+i-ibeg+nrow+1
+              matrixA(matidx1)=-(G1-eps*G2)*tr_area(j)
+              matrixA(matidx2)=-(G0-Gk)*tr_area(j)
+              matrixA(matidx3)=-(G4-G3)*tr_area(j)
+              matrixA(matidx4)=-(G10-G20/eps)*tr_area(j)
+            ENDDO
+
+            matrixA((i-ibeg)*(nrow2+1)+1)=pre1
+            matrixA((i-ibeg+nrow)*(nrow2+1)+1)=pre2
+
+            DO j=i+1,iend
+              r=(/x(j),y(j),z(j)/)
+              v=tr_q(:,j)
+
+              rs=sqrt(dot_product(r-tarxyz,r-tarxyz))
+              G0=one_over_4pi/rs
+              kappa_rs=kappa*rs
+              exp_kappa_rs=exp(-kappa_rs)
+              Gk=exp_kappa_rs*G0
+
+              cos_theta=dot_product(v,r-tarxyz)/rs
+              cos_theta0=dot_product(tarcha,r-tarxyz)/rs
+
+              tp1=G0/rs
+              tp2=(1.d0+kappa_rs)*exp_kappa_rs
+
+              G10=cos_theta0*tp1
+              G20=tp2*G10
+
+              G1=cos_theta*tp1
+              G2=tp2*G1
+              G3=(dot_product(tarcha,v)-3.d0*cos_theta0*cos_theta)
+     &            /rs*tp1
+              G4=tp2*G3-kappa**2*cos_theta0*cos_theta*Gk
+
+              matidx1=(j-ibeg)*nrow2+i-ibeg+1
+              matidx2=(j-ibeg)*nrow2+i-ibeg+nrow+1
+              matidx3=(j-ibeg+nrow)*nrow2+i-ibeg+1
+              matidx4=(j-ibeg+nrow)*nrow2+i-ibeg+nrow+1
+              matrixA(matidx1)=-(G1-eps*G2)*tr_area(j)
+              matrixA(matidx2)=-(G0-Gk)*tr_area(j)
+              matrixA(matidx3)=-(G4-G3)*tr_area(j)
+              matrixA(matidx4)=-(G10-G20/eps)*tr_area(j)
+            ENDDO
+          ENDDO
+
+          call dgetrf( nrow2, nrow2, matrixA, nrow2, ipiv, inc );
+          call dgetrs( 'N', nrow2, 1, matrixA, nrow2, ipiv,
+     &                 r2s, nrow2, inc );
+
+          sol(ibeg:iend)=r2s(1:nrow)
+          sol((ibeg+N):(iend+N))=r2s((nrow+1):nrow2)
+C         idx = iend + 1
+          DEALLOCATE(ipiv,matrixA,r2s)
+
+        ENDDO
+        DEALLOCATE(ibegs,nrows,STAT=ierr)
+
+      END SUBROUTINE LEAFMATVECpara      
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       RECURSIVE SUBROUTINE COMPP_TREE_prec(p,peng,x,y,z,q,tpoten,
      &  kappa,theta,numpars,kk,eps,tempq,der_cof,idx)
