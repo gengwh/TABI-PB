@@ -1434,7 +1434,6 @@ C       the size of input Nt2 is twice of N's
           ibegs(ileaf)=ibeg
           nrows(ileaf)=nrow
           idx = iend + 1
-          print *,ileaf,ibeg,iend
         ENDDO
 
         DO ileaf=1,nleaf
